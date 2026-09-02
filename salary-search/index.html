@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>University of Nebraska Salary Search</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar"></div>
+    <h1>Salary Search</h1>
+    <p class="subtitle">Look up University of Nebraska employee salaries by name, job title, or salary range.</p>
+  </header>
+
+  <main>
+    <form id="search-form" class="search-panel" autocomplete="off">
+      <div class="search-row">
+        <label class="visually-hidden" for="category">Search by</label>
+        <select id="category" name="category">
+          <option value="name">Name</option>
+          <option value="title">Job title</option>
+          <option value="salary">Salary range</option>
+        </select>
+
+        <div class="input-slot">
+          <!-- Name -->
+          <input
+            type="text"
+            id="input-name"
+            class="search-input"
+            placeholder="Start typing a name, e.g. Smith, John"
+            list="names-list"
+            aria-label="Employee name">
+          <datalist id="names-list"></datalist>
+
+          <!-- Title -->
+          <input
+            type="text"
+            id="input-title"
+            class="search-input"
+            placeholder="Start typing a job title, e.g. Professor"
+            list="titles-list"
+            aria-label="Job title"
+            hidden>
+          <datalist id="titles-list"></datalist>
+
+          <!-- Salary -->
+          <select id="input-salary" class="search-input" aria-label="Salary range" hidden>
+            <option value="">Choose a salary range&hellip;</option>
+            <option value="0-50000">Under $50,000</option>
+            <option value="50000-75000">$50,000 &ndash; $75,000</option>
+            <option value="75000-100000">$75,000 &ndash; $100,000</option>
+            <option value="100000-150000">$100,000 &ndash; $150,000</option>
+            <option value="150000-250000">$150,000 &ndash; $250,000</option>
+            <option value="250000-999999999">$250,000 and above</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <label for="campus">Campus</label>
+        <select id="campus" name="campus" class="filter-select">
+          <option value="">All campuses</option>
+        </select>
+      </div>
+    </form>
+
+    <section id="results" class="results" aria-live="polite" hidden>
+      <p id="results-summary" class="results-summary"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Job title</th>
+              <th scope="col">Campus</th>
+              <th scope="col">FTE</th>
+              <th scope="col" class="num">Salary</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+      <p id="results-more" class="results-more" hidden></p>
+    </section>
+
+    <p id="status" class="status">Loading personnel data&hellip;</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>Data source: <code>personnel_data.csv</code>. Salary figures are public record for the University of Nebraska system.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
