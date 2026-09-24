@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presidatchi</title>
+<meta name="description" content="A pixel virtual pet. Hatch Trump, Biden or Obama and keep them fed, happy and healthy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #141d38;
+    --night-2: #1b2750;
+    --ink: #1d2f55;
+    --paper: #f6f3ea;
+    --text: #1d2433;
+    --muted: #4f5a70;
+    --red: #d62839;
+    --gold: #f4c430;
+    --gold-dark: #b8860b;
+    --lcd: #b3b8bc;
+    --px: 4px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--paper);
+    font-family: "VT323", ui-monospace, monospace;
+    font-size: 20px;
+    line-height: 1.15;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 0;
+    background-color: var(--night);
+    background-image: var(--stars), linear-gradient(to bottom, var(--night), var(--night-2));
+    background-size: 256px 256px, 100% 100%;
+    background-attachment: fixed;
+    image-rendering: pixelated;
+  }
+  /* pixel stripes along the bottom of the page */
+  .ground {
+    width: calc(100% + 32px);
+    margin-top: 40px;
+    height: 48px;
+    background: repeating-linear-gradient(to bottom, var(--red) 0 12px, var(--paper) 12px 24px);
+    border-top: var(--px) solid var(--ink);
+  }
+
+  .wrap {
+    --w: min(380px, calc(100vw - 32px));
+    --u: calc(var(--w) / 336);
+    width: var(--w);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .title {
+    margin: 28px 0 18px;
+    font-family: "Press Start 2P", monospace;
+    font-size: clamp(20px, 7vw, 30px);
+    color: var(--gold);
+    text-shadow: 4px 4px 0 var(--red), 8px 8px 0 #000;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  .tagline { margin: -4px 0 18px; font-size: 22px; color: #c9d3ee; text-align: center; }
+
+  /* keychain */
+  .chain {
+    width: calc(var(--u) * 8);
+    height: calc(var(--u) * 44);
+    background: repeating-linear-gradient(to bottom, #b8bdc4 0 calc(var(--u) * 8), #6b7078 calc(var(--u) * 8) calc(var(--u) * 12));
+    margin-bottom: calc(var(--u) * -12);
+    position: relative;
+    z-index: 2;
+  }
+
+  /* the whole device is pixel art drawn on #shell (84 x 101 cells, 4u each) */
+  .device {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 84 / 101;
+  }
+  #shell {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+  .logo {
+    position: absolute;
+    top: calc(var(--u) * 64);
+    left: 0; right: 0;
+    text-align: center;
+    font-family: "Press Start 2P", monospace;
+    font-size: calc(var(--u) * 12);
+    color: var(--gold);
+    text-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--red), calc(var(--u) * 4) calc(var(--u) * 4) 0 #1d2f55;
+    user-select: none;
+  }
+
+  .screen {
+    position: absolute;
+    left: calc(var(--u) * 72);
+    top: calc(var(--u) * 112);
+    width: calc(var(--u) * 192);
+    height: calc(var(--u) * 168);
+  }
+  #screen { width: 100%; height: 100%; }
+  .screen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(0,0,0,.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,.07) 1px, transparent 1px);
+    background-size: calc(100% / 64) calc(100% / 56);
+  }
+
+  .btn {
+    position: absolute;
+    width: calc(var(--u) * 40);
+    height: calc(var(--u) * 44);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: var(--img) center / 100% 100% no-repeat;
+    image-rendering: pixelated;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn:active, .btn.pressed { background-image: var(--img-down); }
+  .btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  .btn span {
+    position: absolute;
+    top: calc(100% + var(--u) * 6);
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: "Press Start 2P", monospace;
+    font-size: calc(var(--u) * 9);
+    color: #fff;
+  }
+  .btn-a { left: calc(var(--u) * 88);  top: calc(var(--u) * 316); }
+  .btn-b { left: calc(var(--u) * 148); top: calc(var(--u) * 328); }
+  .btn-c { left: calc(var(--u) * 208); top: calc(var(--u) * 316); }
+
+  /* info panel: pixel boxes use box-shadow borders so the corners stay notched */
+  .pbox {
+    background: var(--paper);
+    color: var(--text);
+    box-shadow:
+      0 calc(var(--px) * -1) 0 0 var(--ink), 0 var(--px) 0 0 var(--ink),
+      calc(var(--px) * -1) 0 0 0 var(--ink), var(--px) 0 0 0 var(--ink),
+      calc(var(--px) * 2) calc(var(--px) * 3) 0 0 rgba(0,0,0,.45);
+  }
+  .top { text-align: center; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(250px, 330px) auto minmax(250px, 330px);
+    grid-template-areas: "left device right";
+    align-items: start;
+    justify-content: center;
+    gap: 36px;
+    width: 100%;
+  }
+  .side-left { grid-area: left; }
+  .side-right { grid-area: right; }
+  .layout > .wrap { grid-area: device; position: sticky; top: 16px; }
+  .side { padding: 20px 18px 22px; margin-top: 60px; }
+
+  @media (max-width: 1080px) {
+    .layout {
+      grid-template-columns: min(380px, 100%);
+      grid-template-areas: "device" "left" "right";
+      gap: 40px;
+    }
+    .layout > .wrap { position: static; }
+    .side { margin-top: 0; }
+  }
+
+  .side h2 {
+    font-family: "Press Start 2P", monospace;
+    font-size: 12px;
+    color: var(--red);
+    margin: 22px 0 12px;
+  }
+  .side h2.first { margin-top: 0; }
+
+  .status {
+    background: var(--lcd);
+    padding: 12px 14px;
+    color: #1b1b22;
+    box-shadow:
+      0 calc(var(--px) * -1) 0 0 #3a3f47, 0 var(--px) 0 0 #3a3f47,
+      calc(var(--px) * -1) 0 0 0 #3a3f47, var(--px) 0 0 0 #3a3f47;
+    background-image:
+      linear-gradient(to right, rgba(0,0,0,.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,.06) 1px, transparent 1px);
+    background-size: 4px 4px;
+  }
+  .status-card { width: 100%; margin-top: 36px; padding: 14px; }
+  .status-name { font-family: "Press Start 2P", monospace; font-size: 14px; margin-bottom: 8px; }
+  .status-row { display: flex; justify-content: space-between; gap: 12px; text-transform: uppercase; }
+
+  .roster { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .rcard {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 4px 8px;
+    background: #e9e3d3;
+    box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink);
+  }
+  .rcard canvas { width: 48px; height: 51px; }
+  .rcard b { font-family: "Press Start 2P", monospace; font-size: 9px; font-weight: normal; }
+  .rcard span { font-size: 24px; line-height: 1; }
+
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .list li { display: flex; gap: 12px; align-items: center; }
+  .key {
+    flex: none;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    font-family: "Press Start 2P", monospace; font-size: 10px; color: var(--ink);
+    background: var(--gold);
+    clip-path: polygon(30% 0, 70% 0, 70% 10%, 90% 10%, 90% 30%, 100% 30%, 100% 70%, 90% 70%, 90% 90%, 70% 90%, 70% 100%, 30% 100%, 30% 90%, 10% 90%, 10% 70%, 0 70%, 0 30%, 10% 30%, 10% 10%, 30% 10%);
+    box-shadow: inset -3px -3px 0 var(--gold-dark);
+  }
+  .icon {
+    flex: none;
+    width: 30px; height: 30px;
+    padding: 1px;
+    background: var(--lcd);
+    box-shadow: 0 0 0 2px #3a3f47;
+  }
+  .list b { font-family: "Press Start 2P", monospace; font-size: 10px; font-weight: normal; margin-right: 4px; }
+  .note {
+    margin: 18px 0 0;
+    padding: 10px 12px;
+    background: #fbe9b0;
+    box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink);
+  }
+  .note em { font-style: normal; color: var(--red); }
+  .muted { color: var(--muted); }
+  .tag { font-family: "Press Start 2P", monospace; font-size: 9px; font-weight: normal; }
+
+  .closet-label { font-family: "Press Start 2P", monospace; font-size: 9px; margin: 12px 0 8px; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 4px;
+    padding: 6px 3px 4px;
+    border: none;
+    cursor: pointer;
+    font: inherit; font-size: 15px; line-height: 1; color: var(--text);
+    background: #e9e3d3;
+    box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink);
+  }
+  .tile canvas { width: 100%; aspect-ratio: 2 / 1; image-rendering: pixelated; background: var(--lcd); }
+  .tile span { min-height: 2em; display: flex; align-items: center; text-align: center; }
+  .tile.on { background: #fbe9b0; box-shadow: 0 -3px 0 0 var(--red), 0 3px 0 0 var(--red), -3px 0 0 0 var(--red), 3px 0 0 0 var(--red); }
+  .tile.locked { color: var(--muted); }
+  .tile:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+  .hint { margin: 10px 0 0; color: var(--muted); min-height: 1.2em; }
+
+  .toast {
+    position: fixed;
+    top: 16px; left: 50%;
+    transform: translate(-50%, calc(-100% - 40px));
+    visibility: hidden;
+    max-width: calc(100vw - 32px);
+    padding: 12px 16px;
+    font-family: "Press Start 2P", monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: center;
+    background: #fbe9b0;
+    transition: transform .25s steps(4), visibility .25s;
+    z-index: 10;
+  }
+  .toast.show { transform: translate(-50%, 0); visibility: visible; }
+
+  .actions { display: flex; gap: 14px; margin-top: 22px; }
+  .pbtn {
+    flex: 1;
+    font-family: "Press Start 2P", monospace;
+    font-size: 10px;
+    padding: 12px 8px;
+    border: none;
+    cursor: pointer;
+    color: var(--paper);
+    background: var(--ink);
+    box-shadow: 0 -3px 0 0 #0b1224, 0 3px 0 0 #0b1224, -3px 0 0 0 #0b1224, 3px 0 0 0 #0b1224, inset -3px -3px 0 #0f1b38;
+  }
+  .pbtn.alt { background: var(--red); box-shadow: 0 -3px 0 0 #0b1224, 0 3px 0 0 #0b1224, -3px 0 0 0 #0b1224, 3px 0 0 0 #0b1224, inset -3px -3px 0 #9c1a28; }
+  .pbtn:active { transform: translateY(2px); }
+  .pbtn:focus-visible { outline: 3px solid var(--gold); outline-offset: 5px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 class="title">PRESIDATCHI</h1>
+  <p class="tagline">Hatch a president. Keep them fed, happy and healthy.</p>
+</header>
+
+<main class="layout">
+  <aside class="side side-left pbox">
+    <h2 class="first">RAISED SO FAR</h2>
+    <div class="roster">
+      <div class="rcard"><canvas data-pet="trump"></canvas><b>TRUMP</b><span id="rTrump">0</span></div>
+      <div class="rcard"><canvas data-pet="biden"></canvas><b>BIDEN</b><span id="rBiden">0</span></div>
+      <div class="rcard"><canvas data-pet="obama"></canvas><b>OBAMA</b><span id="rObama">0</span></div>
+    </div>
+
+    <h2>BUTTONS</h2>
+    <ul class="list">
+      <li><span class="key">A</span><span>Move between the icons. In the game, guess <b>LEFT</b></span></li>
+      <li><span class="key">B</span><span>Pick the highlighted icon. In the game, guess <b>RIGHT</b></span></li>
+      <li><span class="key">C</span><span>Go back. With nothing highlighted, it shows their age</span></li>
+    </ul>
+    <p class="muted" style="margin:10px 0 0">Keyboard: A, B, C or &larr; &rarr; Esc</p>
+
+    <h2>ON THE SCREEN</h2>
+    <ul class="list">
+      <li><canvas class="icon" data-icon="fork"></canvas><span><b>HUNGER</b> The hearts next to the fork. A meal fills one.</span></li>
+      <li><canvas class="icon" data-icon="star"></canvas><span><b>HAPPY</b> The hearts next to the star. Snacks, games and events fill them.</span></li>
+      <li><canvas class="icon" data-icon="heart"></canvas><span><b>HEARTS</b> Red is full, an outline is empty. Four is the most.</span></li>
+      <li><canvas class="icon" data-icon="skull"></canvas><span><b>SICK</b> A blinking skull means it's time for medicine.</span></li>
+      <li><canvas class="icon" data-icon="bang"></canvas><span><b>ALERT</b> A blinking ! means they're starving, bored or sick.</span></li>
+    </ul>
+
+    <h2>TAKING CARE</h2>
+    <ul class="list">
+      <li><canvas class="icon" data-icon="feed"></canvas><span><b>FEED</b> A meal fills a hunger heart. Their favorite snack fills a happy heart. Too many can make them sick, and way too many in a row ends the game!</span></li>
+      <li><canvas class="icon" data-icon="game"></canvas><span><b>GAME</b> Guess which way they'll jump. Win 3 of 5 rounds for a happy heart.</span></li>
+      <li><canvas class="icon" data-icon="med"></canvas><span><b>MEDICINE</b> Cures them when a skull shows up. Sometimes it takes two doses.</span></li>
+    </ul>
+
+  </aside>
+
+  <div class="wrap">
+  <div class="chain" aria-hidden="true"></div>
+
+  <div class="device">
+    <canvas id="shell" width="84" height="101" aria-hidden="true"></canvas>
+    <div class="logo">PRESIDATCHI</div>
+    <div class="screen"><canvas id="screen" width="64" height="56" aria-label="Game screen"></canvas></div>
+    <button class="btn btn-a" data-btn="A" aria-label="A: select"><span>A</span></button>
+    <button class="btn btn-b" data-btn="B" aria-label="B: confirm"><span>B</span></button>
+    <button class="btn btn-c" data-btn="C" aria-label="C: cancel"><span>C</span></button>
+  </div>
+
+  <div class="status-card pbox">
+      <div class="status">
+        <div class="status-name" id="petName">AN EGG</div>
+        <div class="status-row"><span>Stage</span><span id="petStage">Egg</span></div>
+        <div class="status-row"><span>Age</span><span id="petAge">Not hatched</span></div>
+        <div class="status-row"><span>Mood</span><span id="petMood">Waiting to hatch...</span></div>
+      </div>
+  </div>
+
+  </div>
+
+  <aside class="side side-right pbox">
+    <h2 class="first">CLOSET</h2>
+    <p style="margin:0 0 10px">Unlock hats and screen backgrounds by playing. They carry over to every new egg.</p>
+    <div class="closet-label">HATS</div>
+    <div class="tiles" id="hatTiles"></div>
+    <div class="closet-label">BACKGROUNDS</div>
+    <div class="tiles" id="bgTiles"></div>
+    <p class="hint" id="closetHint">Tap a locked ??? to see how to unlock it.</p>
+
+
+    <h2>GROWING UP</h2>
+    <p style="margin:0">Every egg hatches as a <b class="tag">BABY</b>, becomes a <b class="tag">KID</b> after 1 year and an <b class="tag">ADULT</b> after 3. Once they're a kid, surprise <b class="tag">EVENTS</b> pop up (a press conference, a state dinner, a surprise vote...). Answer with A or B, or press C to ignore.</p>
+
+    <p class="note">A blinking <em>!</em> means they need you. Keep them going for 8 years (about 15 minutes) to win <em>2 TERMS</em>. Leave them hungry or sick too long and they get <em>VOTED OUT</em>.</p>
+
+    <div class="actions">
+      <button id="muteBtn" class="pbtn" type="button">SOUND: ON</button>
+      <button id="resetBtn" class="pbtn alt" type="button">NEW EGG</button>
+    </div>
+  </aside>
+</main>
+<div class="toast pbox" id="toast" role="status" aria-live="polite"></div>
+<div class="ground" aria-hidden="true"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const W = 64, H = 56;
+  const cv = document.getElementById('screen');
+  let ctx = cv.getContext('2d');   // swapped briefly to paint closet previews
+
+  // ---------- colors ----------
+  const LCD = '#b3b8bc', BAR = '#a2a7ac', DIM = '#858a90', INK = '#1b1b22';
+
+  // ---------- sprites ----------
+  const COMMON = { k: INK, w: '#ffffff', m: '#6e1616', y: '#e0a33e', L: '#57a639', n: '#7a4526', p: '#f28cb8', c: '#5fd0e6', r: '#d62839', o: '#e07a2e', b: '#2350b8', R: '#d62828' };
+
+  const PETS = {
+    trump: {
+      name: 'TRUMP', snack: 'BURGER', cheer: 'TREMENDOUS!', food: 'burger',
+      quotes: ['COVFEFE', "YOU'RE FIRED!", 'WRONG!', 'A VERY STABLE GENIUS', 'TREMENDOUS!'],
+      pal: { h: '#f2c14e', H: '#cf9a2e', s: '#f4a96b', S: '#dd8a4f', b: '#10286b', r: '#d62828' },
+      rows: [
+        '...kkkkkkkkkk...',
+        '..khhhhhhhhhhkk.',
+        '.khhhhhhhhhhhhhk',
+        '.khhhhhhhhhhhhHk',
+        '.kshhhhhhhhhhHk.',
+        '.kssssssshhhhsk.',
+        '.kssksssssskssk.',
+        '.kssksssssskssk.',
+        '.kSssssmmssssSk.',
+        '.kksssssssssskk.',
+        '...kkkkkkkkkk...',
+        '..kbbbwrrwbbbk..',
+        '.kbbbbwrrwbbbbk.',
+        '.kbkbbbrrbbbkbk.',
+        '.kskbbbrrbbbksk.',
+        '..kkbbbkkbbbkk..',
+        '...kkkk..kkkk...',
+      ],
+    },
+    biden: {
+      name: 'BIDEN', snack: 'ICE CREAM', cheer: 'NO MALARKEY!', food: 'icecream',
+      quotes: ['MALARKEY!', "C'MON, MAN!", "HERE'S THE DEAL", 'WILL YOU SHUT UP, MAN?', 'NOT A JOKE!'],
+      pal: { h: '#f7f7f7', H: '#bdbdbd', s: '#f2c6a0', S: '#d9a47f', b: '#1d2d57', t: '#3f8fe0' },
+      rows: [
+        '....kkkkkkkk....',
+        '..kkhhhhhhhhkk..',
+        '.khhhhsssshhhhk.',
+        '.khhsssssssshhk.',
+        '.khssssssssssHk.',
+        '.ksHHHssssHHHsk.',
+        '.kssksssssskssk.',
+        '.kssksssssskssk.',
+        '.kSssskkkksssSk.',
+        '.kksssssssssskk.',
+        '...kkkkkkkkkk...',
+        '..kbbbwttwbbbk..',
+        '.kbbbbwttwbbbbk.',
+        '.kbkbbbttbbbkbk.',
+        '.kskbbbbbbbbksk.',
+        '..kkbbbkkbbbkk..',
+        '...kkkk..kkkk...',
+      ],
+    },
+    obama: {
+      name: 'OBAMA', snack: 'PIE', cheer: 'YES WE CAN!', food: 'pie',
+      quotes: ['OBAMA OUT', 'THANKS, OBAMA', 'LET ME BE CLEAR', 'FIRED UP! READY TO GO!', 'YES WE CAN!'],
+      pal: { h: '#2a1e18', H: '#6b625c', s: '#8a5a3c', S: '#6c4229', b: '#4a5160', t: '#2f6fd6' },
+      rows: [
+        '....kkkkkkkk....',
+        '..kkhhhhhhhhkk..',
+        '.khhhhhhhhhhhhk.',
+        '.khHhhhhhhhhHhk.',
+        '.kssssssssssssk.',
+        'SksssssssssssskS',
+        'SksskssssssksskS',
+        'SksskssssssksskS',
+        '.kSsskwwwwkssSk.',
+        '.kksssskkkksskk.',
+        '...kkkkkkkkkk...',
+        '..kbbbwttwbbbk..',
+        '.kbbbbwttwbbbbk.',
+        '.kbkbbbttbbbkbk.',
+        '.kskbbbbbbbbksk.',
+        '..kkbbbkkbbbkk..',
+        '...kkkk..kkkk...',
+      ],
+    },
+  };
+
+  const ART = {
+    egg: [
+      '....kkkk....',
+      '...kwwwwk...',
+      '..kwwbbwwk..',
+      '.kwwbbbbwwk.',
+      '.kwwwbbwwwk.',
+      'kwwwwwwwwwwk',
+      'krrrrrrrrrrk',
+      'kwwwwwwwwwwk',
+      'kwwbwwwwbwwk',
+      'kwbbbwwbbbwk',
+      'kwwbwwwwbwwk',
+      '.kwwwwwwwwk.',
+      '..kwwwwwwk..',
+      '...kkkkkk...',
+    ],
+    feed: [
+      'k.k.k..k.',
+      'k.k.k.kk.',
+      'k.k.k.kk.',
+      'kkkkk.kk.',
+      '.kkk..kk.',
+      '..k...kk.',
+      '..k....k.',
+      '..k....k.',
+      '..k....k.',
+    ],
+    game: [
+      '.........',
+      '..kkkkk..',
+      '.kookook.',
+      'koookoook',
+      'kkkkkkkkk',
+      'koookoook',
+      '.kookook.',
+      '..kkkkk..',
+      '.........',
+    ],
+    med: [
+      '.........',
+      '...kkk...',
+      '...krk...',
+      '.kkkrkkk.',
+      '.krrrrrk.',
+      '.kkkrkkk.',
+      '...krk...',
+      '...kkk...',
+      '.........',
+    ],
+    meal: [
+      '..kkkk..',
+      '.kwwwwk.',
+      'kwwwwwwk',
+      'kkkkkkkk',
+      'krrrrrrk',
+      '.krrrrk.',
+      '..kkkk..',
+    ],
+    burger: [
+      '..kkkk..',
+      '.kyyyyk.',
+      'kyyyyyyk',
+      'LLLLLLLL',
+      'knnnnnnk',
+      'kyyyyyyk',
+      '.kkkkkk.',
+    ],
+    icecream: [
+      '.kkkk.',
+      'kppppk',
+      'kpwppk',
+      'kkkkkk',
+      'kyyyyk',
+      '.kyyk.',
+      '.kyyk.',
+      '..kk..',
+    ],
+    pie: [
+      '..kkkk..',
+      '.kyyyyk.',
+      'kyRyRyyk',
+      'kkkkkkkk',
+      'kyyyyyyk',
+      '.kkkkkk.',
+    ],
+    syringe: [
+      'k..kkkkkk...',
+      'kkkcccccckkk',
+      'k..kkkkkk...',
+    ],
+    skull: [
+      '.kkkkk.',
+      'kwwwwwk',
+      'kwkwkwk',
+      'kwwwwwk',
+      '.kwwwk.',
+      '.kkwkk.',
+      '..kkk..',
+    ],
+    heart: ['.R.R.', 'RRRRR', '.RRR.', '..R..'],
+    heartEmpty: ['.k.k.', 'k.k.k', '.k.k.', '..k..'],
+    fork: ['k.k.k', 'k.k.k', 'kkkkk', '..k..', '..k..'],
+    star: ['..k..', '.kkk.', 'kkkkk', '.kkk.', '.k.k.'],
+    flag: [
+      'kbbbrrrr',
+      'kbwbwwww',
+      'kbbbrrrr',
+      'kwwwwwww',
+      'krrrrrrr',
+      'k.......',
+      'k.......',
+      'k.......',
+    ],
+    drop: ['.c', 'cc', 'cc'],
+    bang: ['.r.', '.r.', '.r.', '...', '.r.'],
+  };
+
+  function compile(rows, pal) {
+    const w = rows[0].length;
+    const px = [];
+    rows.forEach((row, y) => {
+      if (row.length !== w) console.warn('sprite row width mismatch', row);
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x];
+        if (ch === '.') continue;
+        const col = (pal && pal[ch]) || COMMON[ch];
+        if (col) px.push([x, y, col]);
+      }
+    });
+    return { w, h: rows.length, px };
+  }
+  const SP = {};
+  for (const k in ART) SP[k] = compile(ART[k]);
+  // baby template, colored with each president's hair, skin and tie
+  const BABY = [
+    '...hhh....',
+    '..kkkkkk..',
+    '.kssssssk.',
+    'kssssssssk',
+    'kskssssksk',
+    'kssssssssk',
+    'kSsskkssSk',
+    '.kssssssk.',
+    '..kttttk..',
+    '.kttttttk.',
+    '..kk..kk..',
+  ];
+  for (const k in PETS) {
+    const p = PETS[k];
+    const pal = { t: p.pal.r, ...p.pal };
+    p.adult = Object.assign(compile(p.rows, pal), { mouth: [6, 8], top: 0, cx: 8 });
+    // kid: same head, shorter body
+    p.kid = Object.assign(compile([...p.rows.slice(0, 11), p.rows[12], p.rows[15], p.rows[16]], pal), { mouth: [6, 8], top: 0, cx: 8 });
+    p.baby = Object.assign(compile(BABY, pal), { mouth: [3, 6], top: 1, cx: 5 });
+    p.sprite = p.adult;
+  }
+
+  // ---------- hats and backgrounds (unlocked by playing, kept across eggs) ----------
+  const HATS = {
+    none: { label: 'NO HAT' },
+    party: { label: 'PARTY HAT', hint: 'Win the Left or Right game 5 times', test: st => st.gameWins >= 5,
+      rows: ['...c...', '...a...', '..aba..', '..aaa..', '.aabaa.', '.aaaaa.', 'abaaaba'], pal: { a: '#e8508a', b: '#f4c430', c: '#f4c430' } },
+    grad: { label: 'GRAD CAP', hint: 'Raise a president all the way to adult', test: st => st.grown >= 1,
+      rows: ['....kkkk....', 'kkkkkkkkkkkk', '..kkkkkkkky.', '..kkkkkk..y.'], pal: { y: '#f4c430' } },
+    top: { label: 'TOP HAT', hint: 'Finish two terms', test: st => st.terms >= 1,
+      rows: ['..kkkkkk..', '..kkkkkk..', '..kkkkkk..', '..krrrrk..', '..kkkkkk..', 'kkkkkkkkkk'], pal: { r: '#d62839' } },
+    sam: { label: 'UNCLE SAM', hint: 'Finish two terms with all three presidents', test: st => Object.keys(st.termsBy).length >= 3,
+      rows: ['..kkkkkk..', '..kwrwrk..', '..kwrwrk..', '..kwrwrk..', '..kbbybk..', 'kbbbbbbbbk', 'kkkkkkkkkk'], pal: { w: '#f6f3ea', r: '#d62839', b: '#2350b8', y: '#ffffff' } },
+    cone: { label: 'CONE HAT', secret: true, hint: 'Spoil a president with way too many snacks', test: st => st.snackCrash >= 1,
+      rows: ['...k...', '..kyk..', '..kyk..', '.kyyyk.', '.kyyyk.', 'kpppppk', 'p.p.p.p'], pal: { y: '#e0a33e', p: '#f28cb8' } },
+  };
+  for (const k in HATS) if (HATS[k].rows) HATS[k].sp = compile(HATS[k].rows, HATS[k].pal);
+
+  const BGS = {
+    plain: { label: 'PLAIN' },
+    stars: { label: 'NIGHT SKY', hint: 'Answer 3 random events', test: st => st.events >= 3 },
+    flag: { label: 'FLAG', hint: 'Finish two terms', test: st => st.terms >= 1 },
+    house: { label: 'WHITE HOUSE', hint: 'Finish two terms 3 times', test: st => st.terms >= 3 },
+    fireworks: { label: 'FIREWORKS', hint: 'Finish two terms with all three presidents', test: st => Object.keys(st.termsBy).length >= 3 },
+    icecream: { label: 'ICE CREAM', secret: true, hint: 'Spoil a president with way too many snacks', test: st => st.snackCrash >= 1 },
+  };
+  const HOUSE = compile([
+    '.........kkkk.........',
+    '......kkkwwwwkkk......',
+    '....kkwwwwwwwwwwkk....',
+    'kkkkkkkkkkkkkkkkkkkkkk',
+    'kwwwwwwwwwwwwwwwwwwwwk',
+    'kwgwgwwkwkwkwkwwgwgwwk',
+    'kwwwwwwkwkwkwkwwwwwwwk',
+    'kwgwgwwkwkwkwkwwgwgwwk',
+    'kwwwwwwkwkwkwkwwwwwwwk',
+    'kkkkkkkkkkkkkkkkkkkkkk',
+  ], { k: '#7b828c', w: '#eceae4', g: '#8b95a5' });
+
+  // draws into the play area (y 13-44)
+  function drawBackground(id, now) {
+    if (id === 'stars') {
+      ctx.fillStyle = '#f6f8fb';
+      [[6, 16], [17, 21], [29, 15], [40, 20], [51, 27], [9, 31], [22, 29], [45, 34], [35, 25], [58, 37], [4, 40]].forEach(([x, y], i) => {
+        if (i % 3 === 0) { ctx.fillRect(x - 1, y, 3, 1); ctx.fillRect(x, y - 1, 1, 3); } else ctx.fillRect(x, y, 1, 1);
+      });
+      ctx.fillStyle = '#f7e7a1';
+      ctx.fillRect(54, 15, 3, 1); ctx.fillRect(53, 16, 2, 3); ctx.fillRect(54, 19, 3, 1);
+    } else if (id === 'flag') {
+      ctx.fillStyle = '#5b6068'; ctx.fillRect(4, 14, 1, 30);
+      const t = Math.floor(now / 300);
+      for (let x = 0; x < 16; x++) {
+        const dy = Math.round(Math.sin((x + t) / 2.5));
+        for (let y = 0; y < 9; y++) {
+          const canton = x < 7 && y < 5;
+          const star = canton && x > 0 && x < 6 && y > 0 && y < 4 && (x + y) % 2 === 0;
+          ctx.fillStyle = star ? '#f6f3ea' : canton ? '#3d5a99' : y % 2 === 0 ? '#c0394a' : '#f6f3ea';
+          ctx.fillRect(5 + x, 15 + y + dy, 1, 1);
+        }
+      }
+    } else if (id === 'house') {
+      draw(HOUSE, 21, 34);
+      ctx.fillStyle = '#5b6068'; ctx.fillRect(31, 28, 1, 6);
+      ctx.fillStyle = '#c0394a'; ctx.fillRect(32, 28, 3, 2);
+    } else if (id === 'icecream') {
+      // melting drips from the top, sprinkles, and a couple of cones
+      for (let x = 0; x < 64; x++) {
+        const len = 1 + ((x * 37 + 11) % 7 === 0 ? 4 : (x * 13) % 3);
+        ctx.fillStyle = '#f7b6d2'; ctx.fillRect(x, 13, 1, len);
+      }
+      const sprinkles = ['#d62839', '#2350b8', '#f4c430', '#57a639', '#ffffff'];
+      [[8, 22], [19, 28], [33, 21], [47, 26], [57, 20], [26, 35], [12, 38], [52, 36], [40, 31]].forEach(([x, y], i) => {
+        ctx.fillStyle = sprinkles[i % sprinkles.length]; ctx.fillRect(x, y, 2, 1);
+      });
+      draw(SP.icecream, 3, 35);
+      draw(SP.icecream, 55, 35);
+    } else if (id === 'fireworks') {
+      const cols = ['#d62839', '#2350b8', '#f4c430', '#ffffff'];
+      for (let i = 0; i < 3; i++) {
+        const per = 1800, tt = now + i * 600, cyc = Math.floor(tt / per), t = (tt % per) / per;
+        if (t > 0.85) continue;
+        const h = (cyc * 7919 + i * 104729) % 1000;
+        const cx = 8 + (h % 48), cy = 17 + ((h >> 3) % 10), r = 1 + Math.floor(t * 6);
+        ctx.fillStyle = cols[(cyc + i) % 4];
+        [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]
+          .forEach(([dx, dy]) => ctx.fillRect(Math.round(cx + dx * r), Math.round(cy + dy * r), 1, 1));
+      }
+    }
+  }
+
+  function draw(sp, x, y, flip = false, override) {
+    for (const [px, py, col] of sp.px) {
+      ctx.fillStyle = override || col;
+      ctx.fillRect(flip ? x + sp.w - 1 - px : x + px, y + py, 1, 1);
+    }
+  }
+
+  // ---------- 3x5 pixel font ----------
+  const FONT = {
+    A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110',
+    E: '111100110100111', F: '111100110100100', G: '011100101101011', H: '101101111101101',
+    I: '111010010010111', J: '001001001101010', K: '101101110101101', L: '100100100100111',
+    M: '101111111101101', N: '110101101101101', O: '010101101101010', P: '110101110100100',
+    Q: '010101101110011', R: '110101110101101', S: '011100010001110', T: '111010010010010',
+    U: '101101101101111', V: '101101101101010', W: '101101111111101', X: '101101010101101',
+    Y: '101101010010010', Z: '111001010100111',
+    0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110',
+    4: '101101111001001', 5: '111100110001110', 6: '011100111101111', 7: '111001010010010',
+    8: '111101111101111', 9: '111101111001110',
+    '!': '010010010000010', '?': '110001010000010', '.': '000000000000010', ':': '000010000010000',
+    '-': '000000111000000', ' ': '000000000000000', '/': '001001010100100', "'": '010010000000000',
+    '>': '100010001010100', ',': '000000000010100', '<': '001010100010001',
+  };
+  const textW = s => s.length * 4 - 1;
+  function text(s, x, y, col = INK) {
+    ctx.fillStyle = col;
+    for (let i = 0; i < s.length; i++) {
+      const g = FONT[s[i]] || FONT['?'];
+      for (let j = 0; j < 15; j++) if (g[j] === '1') ctx.fillRect(x + i * 4 + (j % 3), y + ((j / 3) | 0), 1, 1);
+    }
+  }
+  const ctext = (s, y, col) => text(s, ((W - textW(s)) / 2) | 0, y, col);
+  function wrap(s, max = 15) {
+    const lines = [];
+    let cur = '';
+    for (const word of s.split(' ')) {
+      if (cur && (cur + ' ' + word).length > max) { lines.push(cur); cur = word; }
+      else cur = cur ? cur + ' ' + word : word;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // ---------- random events ----------
+  const chance = p => Math.random() < p;
+  const EVENTS = [
+    { title: ['PRESS', 'CONFERENCE!'], a: 'ANSWER', b: 'NO COMMENT',
+      pick: ch => ch === 'A'
+        ? (chance(0.6) ? { happy: 1, msg: ['GREAT ANSWER!'], pose: 'happy' } : { happy: -1, msg: ['TOUGH', 'QUESTION...'], pose: 'sad' })
+        : { msg: ['NO COMMENT.'], pose: 'shake' } },
+    { title: ['STATE DINNER!'], a: 'EAT IT ALL', b: 'SMALL BITE',
+      pick: ch => ch === 'A' ? { hunger: 2, snacks: 2, msg: ['SO FULL...'], pose: 'happy' } : { hunger: 1, msg: ['DELICIOUS!'], pose: 'happy' } },
+    { title: ['A BABY WANTS', 'A KISS!'], a: 'KISS BABY', b: 'JUST WAVE',
+      pick: ch => ch === 'A' ? { happy: 1, msg: ['SO CUTE!'], pose: 'happy' } : { msg: ['WAVES HI!'], pose: 'normal' } },
+    { title: ['SURPRISE', 'VOTE!'], a: 'VOTE YES', b: 'VOTE NO',
+      pick: () => chance(0.5) ? { happy: 1, msg: ['BILL PASSED!'], pose: 'happy' } : { happy: -1, msg: ['BILL FAILED'], pose: 'sad' } },
+    { title: ['RAINY PARADE!'], a: 'UMBRELLA', b: 'DANCE IN IT',
+      pick: ch => ch === 'A' ? { msg: ['STAYED DRY'], pose: 'normal' }
+        : chance(0.6) ? { happy: 2, msg: ['SO FUN!'], pose: 'happy' } : { sick: true, msg: ['ACHOO!', 'CAUGHT A COLD'], pose: 'sad' } },
+    { title: ['TURKEY', 'PARDON DAY!'], a: 'PARDON IT', b: 'EAT IT',
+      pick: ch => ch === 'A' ? { happy: 1, msg: ['GOBBLE GOBBLE!'], pose: 'happy' } : { hunger: 1, msg: ['UM... YUM?'], pose: 'shake' } },
+    { title: ['PUPPY AT THE', 'WHITE HOUSE!'], a: 'PET IT', b: 'KEEP WORKING',
+      pick: ch => ch === 'A' ? { happy: 2, msg: ['GOOD BOY!'], pose: 'happy' } : { msg: ['BACK TO WORK'], pose: 'normal' } },
+  ];
+
+  // ---------- timing ----------
+  const MIN = 60e3;
+  const T = {
+    HUNGER: 80e3,         // lose a hunger heart
+    HAPPY: 70e3,          // lose a happy heart
+    YEAR: 112.5e3,        // one year of age: 8 years = 15 minutes
+    TERMS: 8,             // years to finish two terms
+    SICK_OUT: 4 * MIN,    // untreated sickness ends the run
+    STARVE_OUT: 5 * MIN,  // empty hunger ends the run
+    SICK_CHECK: 30e3,     // how often sickness can strike
+    EGG: 12e3,
+    SNACK_DECAY: MIN,
+    SNACK_CRASH: 6,       // this many snacks in a short stretch ends the run
+    CATCHUP_MAX: 20 * MIN,
+  };
+
+  // ---------- state ----------
+  const KEY = 'presidatchi-v1';
+  function freshEgg(prev) {
+    return {
+      phase: 'egg', who: null, eggT: 0, age: 0, stage: null,
+      hunger: 4, happy: 4, sick: false, doses: 0,
+      sickFor: 0, starveFor: 0, hungerT: 0, happyT: 0,
+      snacks: 0, snackT: 0, sickRoll: 0, end: null,
+      last: Date.now(),
+      raised: (prev && prev.raised) || { trump: 0, biden: 0, obama: 0 },
+      muted: !!(prev && prev.muted),
+      stats: prev && prev.stats, unlocked: prev && prev.unlocked,
+      hat: prev && prev.hat, bg: prev && prev.bg,
+    };
+  }
+  function fillDefaults(st) {
+    st.stats = Object.assign({ gameWins: 0, grown: 0, terms: 0, termsBy: {}, events: 0, snackCrash: 0 }, st.stats);
+    st.unlocked = st.unlocked || [];
+    st.hat = st.hat || 'none';
+    st.bg = st.bg || 'plain';
+    return st;
+  }
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || typeof S !== 'object' || !S.phase) S = freshEgg();
+  fillDefaults(S);
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  const ui = {
+    mode: 'main', sel: -1, feedSel: 0, t0: 0, msg: null, game: null,
+    petX: 24, target: 24, flip: false, moveT: 0, needPrev: false,
+    quote: null, quoteT: 0, nextQuote: performance.now() + 8000,
+    event: null, nextEvent: performance.now() + 40000, pendingGrow: false,
+  };
+
+  // ---------- sound ----------
+  let actx = null;
+  function tone(f, d = 0.05, delay = 0) {
+    if (S.muted) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'square'; o.frequency.value = f; g.gain.value = 0.035;
+      o.connect(g).connect(actx.destination);
+      const t = actx.currentTime + delay;
+      o.start(t); o.stop(t + d);
+    } catch (e) {}
+  }
+  const sfx = {
+    click: () => tone(1900, 0.03),
+    alert: () => { tone(1500, 0.08); tone(1500, 0.08, 0.14); tone(1500, 0.08, 0.28); },
+    good: () => { tone(1046, 0.08); tone(1318, 0.08, 0.09); tone(1568, 0.12, 0.18); },
+    bad: () => { tone(400, 0.12); tone(300, 0.18, 0.13); },
+    hatch: () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.1, i * 0.1)); },
+  };
+
+  // ---------- simulation ----------
+  function step(dt, offline) {
+    if (S.phase === 'egg') { S.eggT += dt; return; }
+    if (S.phase !== 'alive') return;
+
+    S.age += dt;
+    S.hungerT += dt;
+    while (S.hungerT >= T.HUNGER) { S.hungerT -= T.HUNGER; S.hunger = Math.max(0, S.hunger - 1); }
+    S.happyT += dt;
+    while (S.happyT >= T.HAPPY) { S.happyT -= T.HAPPY; S.happy = Math.max(0, S.happy - 1); }
+    S.snackT += dt;
+    while (S.snackT >= T.SNACK_DECAY) { S.snackT -= T.SNACK_DECAY; S.snacks = Math.max(0, S.snacks - 1); }
+
+    S.starveFor = S.hunger === 0 ? S.starveFor + dt : 0;
+    S.sickFor = S.sick ? S.sickFor + dt : 0;
+
+    S.sickRoll += dt;
+    while (S.sickRoll >= T.SICK_CHECK) {
+      S.sickRoll -= T.SICK_CHECK;
+      if (!S.sick) {
+        const p = 0.02 + (S.hunger === 0 ? 0.3 : 0) + (S.happy === 0 ? 0.2 : 0) + Math.max(0, S.snacks - 2) * 0.15;
+        if (Math.random() < p) { S.sick = true; S.doses = Math.random() < 0.4 ? 2 : 1; }
+      }
+    }
+
+    if (offline) {
+      // Time away never ends the run on its own: you always get a chance to help.
+      S.starveFor = Math.min(S.starveFor, T.STARVE_OUT - MIN);
+      S.sickFor = Math.min(S.sickFor, T.SICK_OUT - MIN);
+    } else if (S.starveFor >= T.STARVE_OUT || S.sickFor >= T.SICK_OUT) {
+      endRun('out');
+    }
+    if (S.age >= T.TERMS * T.YEAR) endRun('win');
+  }
+
+  function catchUp(ms) {
+    ms = Math.min(ms, T.CATCHUP_MAX);
+    while (ms > 0) { const d = Math.min(5000, ms); step(d, true); ms -= d; }
+    if (S.phase === 'egg' && S.eggT > T.EGG - 1500) S.eggT = T.EGG - 1500;
+  }
+
+  const stageOf = age => age < T.YEAR ? 'baby' : age < 3 * T.YEAR ? 'kid' : 'adult';
+
+  function endRun(type) {
+    if (S.phase !== 'alive') return;
+    S.phase = 'over'; S.end = type;
+    if (type === 'win') { S.stats.terms++; S.stats.termsBy[S.who] = true; checkUnlocks(); }
+    if (type === 'snack') { S.stats.snackCrash++; checkUnlocks(); }
+    ui.mode = 'main'; ui.sel = -1;
+    type === 'win' ? sfx.good() : sfx.bad();
+    save();
+  }
+
+  function startHatch(now) {
+    if (!S.who) {
+      const keys = Object.keys(PETS);
+      S.who = keys[(Math.random() * keys.length) | 0];
+      S.raised[S.who] = (S.raised[S.who] || 0) + 1;
+      save();
+    }
+    ui.mode = 'hatch'; ui.t0 = now;
+  }
+
+  function becomeAlive() {
+    Object.assign(S, { phase: 'alive', stage: 'baby', age: 0, hunger: 4, happy: 4, sick: false, doses: 0, sickFor: 0, starveFor: 0, hungerT: 0, happyT: 0, snacks: 0, snackT: 0, sickRoll: 0 });
+    save();
+  }
+
+  function newEgg() {
+    S = fillDefaults(freshEgg(S));
+    Object.assign(ui, { mode: 'main', sel: -1, petX: 24, target: 24, game: null, msg: null });
+    save();
+  }
+
+  function showMsg(now, lines, pose = 'normal', dur = 2200) {
+    ui.mode = 'msg'; ui.t0 = now; ui.msg = { lines, pose, dur };
+  }
+
+  function checkUnlocks() {
+    const found = [];
+    for (const [kind, items] of [['hat', HATS], ['bg', BGS]]) {
+      for (const id in items) {
+        const it = items[id], key = kind + ':' + id;
+        if (it.test && !S.unlocked.includes(key) && it.test(S.stats)) { S.unlocked.push(key); found.push(it.label); }
+      }
+    }
+    if (found.length) { toast('UNLOCKED: ' + found.join(' + ')); buildCloset(); save(); }
+  }
+
+  function finishEvent(now, ch) {
+    ui.nextEvent = now + 60000 + Math.random() * 45000;
+    if (!ch) { showMsg(now, ['IGNORED...'], 'normal', 1500); return; }
+    const r = ui.event.pick(ch);
+    if (r.hunger) S.hunger = Math.max(0, Math.min(4, S.hunger + r.hunger));
+    if (r.happy) S.happy = Math.max(0, Math.min(4, S.happy + r.happy));
+    if (r.snacks) S.snacks += r.snacks;
+    if (r.sick && !S.sick) { S.sick = true; S.doses = 1; }
+    S.stats.events++;
+    (r.pose === 'happy' ? sfx.good : r.pose === 'sad' ? sfx.bad : sfx.click)();
+    showMsg(now, r.msg, r.pose, 2400);
+    checkUnlocks();
+    save();
+  }
+
+  // ---------- input ----------
+  function press(btn) {
+    const now = performance.now();
+    sfx.click();
+    const pet = PETS[S.who];
+
+    if (S.phase === 'over') { if (btn === 'B' || btn === 'A') newEgg(); return; }
+    if (S.phase === 'egg' || ui.mode === 'hatch') return;
+
+    switch (ui.mode) {
+      case 'main':
+        if (btn === 'A') ui.sel = (ui.sel + 1) % 3;
+        else if (btn === 'C') {
+          if (ui.sel >= 0) ui.sel = -1;
+          else showMsg(now, [pet.name, 'AGE ' + Math.floor(S.age / T.YEAR)], 'normal', 1800);
+        } else if (btn === 'B') {
+          if (ui.sel === 0) { ui.mode = 'feed'; ui.feedSel = 0; }
+          else if (ui.sel === 1) { ui.mode = 'game'; ui.game = { round: 1, wins: 0, state: 'ask', t0: now }; }
+          else if (ui.sel === 2) {
+            if (!S.sick) showMsg(now, ['NOT SICK!'], 'shake');
+            else { ui.mode = 'med'; ui.t0 = now; }
+          }
+        }
+        break;
+
+      case 'feed':
+        if (btn === 'A') ui.feedSel ^= 1;
+        else if (btn === 'C') ui.mode = 'main';
+        else if (btn === 'B') {
+          if (ui.feedSel === 0 && S.hunger >= 4) showMsg(now, ["I'M FULL!"], 'shake');
+          else { ui.mode = 'eat'; ui.t0 = now; ui.eating = ui.feedSel === 0 ? 'meal' : pet.food; }
+        }
+        break;
+
+      case 'game': {
+        const g = ui.game;
+        if (btn === 'C') { ui.mode = 'main'; break; }
+        if (g.state !== 'ask') break;
+        g.guess = btn === 'A' ? -1 : 1;
+        g.dir = Math.random() < 0.5 ? -1 : 1;
+        g.state = 'reveal'; g.t0 = now;
+        if (g.guess === g.dir) { g.wins++; tone(1568, 0.08); } else tone(500, 0.1);
+        break;
+      }
+
+      case 'msg':
+        ui.mode = 'main';
+        break;
+
+      case 'event':
+        finishEvent(now, btn === 'C' ? null : btn);
+        break;
+    }
+  }
+
+  document.querySelectorAll('.btn').forEach(b => {
+    b.addEventListener('click', () => press(b.dataset.btn));
+  });
+  const KEYMAP = { a: 'A', A: 'A', ArrowLeft: 'A', ' ': 'A', b: 'B', B: 'B', ArrowRight: 'B', Enter: 'B', c: 'C', C: 'C', Escape: 'C', Backspace: 'C' };
+  document.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('button')) return;
+    const btn = KEYMAP[e.key];
+    if (!btn || e.repeat) return;
+    e.preventDefault();
+    const el = document.querySelector(`.btn[data-btn="${btn}"]`);
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 90);
+    press(btn);
+  });
+
+  // ---------- timed UI transitions ----------
+  function updateUI(now) {
+    if (S.phase === 'egg' && ui.mode !== 'hatch' && S.eggT >= T.EGG) { startHatch(now); sfx.alert(); }
+    if (ui.mode === 'hatch') {
+      const t = now - ui.t0;
+      if (t >= 2300 && S.phase === 'egg') { becomeAlive(); sfx.hatch(); }
+      if (t >= 5200) ui.mode = 'main';
+    }
+    if (S.phase !== 'alive') return;
+
+    // growing up
+    const stage = stageOf(S.age);
+    if (S.stage !== stage) {
+      const grew = !!S.stage;
+      S.stage = stage;
+      if (grew) {
+        ui.pendingGrow = stage;
+        if (stage === 'adult') { S.stats.grown++; checkUnlocks(); }
+        save();
+      }
+    }
+    if (ui.pendingGrow && ui.mode === 'main') {
+      showMsg(now, ['GROWING UP!', ui.pendingGrow === 'adult' ? 'ALL GROWN UP' : 'NOW A KID'], 'happy', 2800);
+      ui.pendingGrow = false;
+      sfx.hatch();
+    }
+
+    if (ui.mode === 'eat' && now - ui.t0 >= 2400) {
+      if (ui.eating === 'meal') { S.hunger = Math.min(4, S.hunger + 1); showMsg(now, ['YUM!'], 'happy', 1200); }
+      else {
+        S.happy = Math.min(4, S.happy + 1); S.snacks++;
+        if (S.snacks >= T.SNACK_CRASH) { endRun('snack'); return; }
+        if (S.snacks >= T.SNACK_CRASH - 2) { sfx.bad(); showMsg(now, ['TUMMY ACHE...', 'TOO MANY SNACKS'], 'sad', 1800); save(); return; }
+        showMsg(now, ['YUM!'], 'happy', 1200);
+      }
+      sfx.good(); save();
+    }
+    if (ui.mode === 'med' && now - ui.t0 >= 1600) {
+      S.doses = Math.max(0, S.doses - 1);
+      if (S.doses === 0) { S.sick = false; S.sickFor = 0; sfx.good(); showMsg(now, ['ALL BETTER!'], 'happy'); }
+      else { tone(900, 0.1); showMsg(now, ['ONE MORE', 'DOSE!'], 'normal'); }
+      save();
+    }
+    if (ui.mode === 'game') {
+      const g = ui.game;
+      if (g.state === 'reveal' && now - g.t0 >= 1300) {
+        if (g.round >= 5) {
+          if (g.wins >= 3) { S.happy = Math.min(4, S.happy + 1); S.stats.gameWins++; checkUnlocks(); sfx.good(); showMsg(now, [PETS[S.who].cheer, 'WON ' + g.wins + '/5'], 'happy', 2600); }
+          else { sfx.bad(); showMsg(now, ['TRY AGAIN', 'WON ' + g.wins + '/5'], 'sad', 2600); }
+          save();
+        } else { g.round++; g.state = 'ask'; g.t0 = now; }
+      }
+    }
+    if (ui.mode === 'msg' && now - ui.t0 >= ui.msg.dur) ui.mode = 'main';
+    if (ui.mode === 'event' && now - ui.t0 > 20000) finishEvent(now, null);
+
+    // random events (not for babies)
+    if (ui.mode === 'main' && !ui.quote && ui.sel < 0 && !S.sick && stage !== 'baby' && now > ui.nextEvent) {
+      ui.event = EVENTS[(Math.random() * EVENTS.length) | 0];
+      ui.mode = 'event'; ui.t0 = now;
+      sfx.alert();
+    }
+
+    // random quotes
+    if (ui.mode !== 'main') ui.quote = null;
+    else if (ui.quote && now - ui.quoteT > 3500) { ui.quote = null; ui.nextQuote = now + 15000 + Math.random() * 20000; }
+    else if (!ui.quote && now > ui.nextQuote && ui.sel < 0 && !S.sick) {
+      const qs = stage === 'baby' ? ['GOO GOO!', 'WAAH!', 'BA BA?', 'HEE HEE!'] : PETS[S.who].quotes;
+      let q;
+      do q = qs[(Math.random() * qs.length) | 0]; while (qs.length > 1 && q === ui.lastQuote);
+      ui.quote = wrap(q); ui.lastQuote = q; ui.quoteT = now;
+      tone(1200, 0.04); tone(1500, 0.04, 0.06);
+    }
+
+    // wandering
+    if (ui.mode === 'main' && !ui.quote && now - ui.moveT > 600) {
+      ui.moveT = now;
+      if (!S.sick) {
+        if (Math.abs(ui.petX - ui.target) < 2) ui.target = 4 + Math.floor(Math.random() * 40);
+        const d = Math.sign(ui.target - ui.petX) * 2;
+        if (d) { ui.petX += d; ui.flip = d < 0; }
+      }
+    }
+  }
+
+  // ---------- rendering ----------
+  const ICONS = ['feed', 'game', 'med'];
+  const ICON_X = [6, 27, 48];
+
+  function drawChrome(highlight) {
+    ctx.fillStyle = LCD; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = BAR; ctx.fillRect(0, 0, W, 12); ctx.fillRect(0, 45, W, 11);
+    ctx.fillStyle = DIM; ctx.fillRect(0, 12, W, 1); ctx.fillRect(0, 44, W, 1);
+    ICONS.forEach((k, i) => {
+      if (i === highlight) {
+        ctx.fillStyle = INK; ctx.fillRect(ICON_X[i] - 2, 1, 13, 11);
+        draw(SP[k], ICON_X[i], 2, false, LCD);
+      } else draw(SP[k], ICON_X[i], 2);
+    });
+  }
+
+  function drawHearts() {
+    draw(SP.fork, 2, 48);
+    for (let i = 0; i < 4; i++) draw(i < S.hunger ? SP.heart : SP.heartEmpty, 8 + i * 6, 48);
+    draw(SP.star, 33, 48);
+    for (let i = 0; i < 4; i++) draw(i < S.happy ? SP.heart : SP.heartEmpty, 39 + i * 6, 48);
+  }
+
+  // (x, y) is the top-left of a 16x17 box; smaller stages stand centered on its floor
+  function drawPet(x, y, opts = {}) {
+    const sp = PETS[S.who][stageOf(S.age)];
+    const ox = x + ((16 - sp.w) >> 1), oy = y + 17 - sp.h;
+    draw(sp, ox, oy, opts.flip);
+    const hat = HATS[S.hat] && HATS[S.hat].sp;
+    if (hat) draw(hat, ox + sp.cx - (hat.w >> 1), oy + sp.top + 2 - hat.h, opts.flip);
+    if (opts.chomp) { ctx.fillStyle = INK; ctx.fillRect(ox + sp.mouth[0], oy + sp.mouth[1], 4, 2); }
+    if (opts.sweat) draw(SP.drop, opts.flip ? ox : ox + sp.w - 2, oy + 2);
+  }
+
+  function frame(now) {
+    // clock
+    const wall = Date.now();
+    const dt = wall - S.last;
+    S.last = wall;
+    if (dt > 5000) catchUp(dt); else if (dt > 0) step(dt, false);
+    updateUI(now);
+
+    const blink = Math.floor(now / 500) % 2 === 0;
+    const bob = Math.floor(now / 500) % 2;
+
+    if (S.phase === 'egg' || (ui.mode === 'hatch' && now - ui.t0 < 2300)) {
+      drawChrome(-1);
+      const hatching = ui.mode === 'hatch';
+      const t = hatching ? now - ui.t0 : 0;
+      const wob = hatching ? (Math.floor(now / 80) % 2 ? 1 : -1) : (Math.floor(now / 400) % 4 === 0 ? 1 : Math.floor(now / 400) % 4 === 2 ? -1 : 0);
+      const ex = 26 + wob, ey = 28;
+      draw(SP.egg, ex, ey);
+      if (hatching && t > 600) { ctx.fillStyle = INK; [[2,5],[3,6],[4,5],[5,6],[6,5]].forEach(([cx, cy]) => ctx.fillRect(ex + cx, ey + cy, 1, 1)); }
+      if (hatching && t > 1200) { ctx.fillStyle = INK; [[7,6],[8,5],[9,6],[1,4],[10,4]].forEach(([cx, cy]) => ctx.fillRect(ex + cx, ey + cy, 1, 1)); }
+      if (hatching && t > 1800) { ctx.fillStyle = '#fffbe0'; ctx.fillRect(0, 13, W, 31); }
+      ctext(hatching ? 'HATCHING!' : 'EGG', 16);
+      ctx.fillStyle = BAR; ctx.fillRect(0, 45, W, 11);
+      ctext(hatching ? '!!!' : 'WAIT...', 48);
+    } else if (S.phase === 'over') {
+      drawChrome(-1);
+      const win = S.end === 'win', crash = S.end === 'snack';
+      drawBackground(S.bg, now);
+      ctext(win ? '2 TERMS!' : crash ? 'SUGAR CRASH!' : 'VOTED OUT', 15, win ? '#10286b' : '#6e1616');
+      if (crash) draw(SP[PETS[S.who].food], 46, 34);
+      if (win) draw(SP.flag, 8, 28);
+      drawPet(24, 26 + (win ? bob : 1), { sweat: !win });
+      if (win && blink) { draw(SP.heart, 44, 24); draw(SP.heart, 50, 30); }
+      ctx.fillStyle = BAR; ctx.fillRect(0, 45, W, 11);
+      ctext('B: NEW EGG', 48);
+    } else {
+      const pet = PETS[S.who];
+      const need = S.hunger === 0 || S.happy === 0 || S.sick;
+
+      switch (ui.mode) {
+        case 'hatch': {
+          drawChrome(-1);
+          ctext("IT'S BABY " + pet.name + '!', 16);
+          drawPet(24, 26 - (Math.floor(now / 250) % 2) * 2);
+          if (blink) { draw(SP.heart, 10, 24); draw(SP.heart, 49, 22); }
+          drawHearts();
+          break;
+        }
+        case 'feed': {
+          drawChrome(0);
+          const items = [['MEAL', 'meal'], [pet.snack, pet.food]];
+          items.forEach(([label, spr], i) => {
+            const y = 17 + i * 13;
+            if (ui.feedSel === i) text('>', 3, y);
+            text(label, 9, y);
+            draw(SP[spr], 55 - SP[spr].w / 2 | 0, y - 2);
+          });
+          drawHearts();
+          break;
+        }
+        case 'eat': {
+          drawChrome(0);
+          drawBackground(S.bg, now);
+          const t = now - ui.t0;
+          const fs = SP[ui.eating];
+          const cut = Math.min(3, Math.floor(t / 700)) / 3;
+          ctx.save();
+          ctx.beginPath(); ctx.rect(0, 30 + fs.h * cut, W, 20); ctx.clip();
+          draw(fs, 12, 30);
+          ctx.restore();
+          drawPet(30, 27, { flip: true, chomp: Math.floor(t / 200) % 2 === 0 });
+          drawHearts();
+          break;
+        }
+        case 'med': {
+          drawChrome(2);
+          drawBackground(S.bg, now);
+          const t = now - ui.t0;
+          const sx = Math.min(22, 2 + Math.floor(t / 60));
+          draw(SP.syringe, sx, 34);
+          drawPet(34, 27, { sweat: true });
+          drawHearts();
+          break;
+        }
+        case 'game': {
+          drawChrome(1);
+          const g = ui.game;
+          if (g.state === 'ask') {
+            ctext('LEFT OR RIGHT?', 15);
+            drawPet(24, 27 + bob);
+          } else {
+            const ok = g.guess === g.dir;
+            ctext(ok ? 'YES!' : 'NOPE', 15, ok ? '#10286b' : '#6e1616');
+            drawPet(g.dir < 0 ? 4 : 44, 27, { flip: g.dir < 0, sweat: !ok });
+            if (ok && blink) draw(SP.heart, g.dir < 0 ? 22 : 38, 22);
+          }
+          ctx.fillStyle = BAR; ctx.fillRect(0, 45, W, 11);
+          ctext('ROUND ' + g.round + '/5 W' + g.wins, 48);
+          break;
+        }
+        case 'msg': {
+          drawChrome(ui.sel);
+          const m = ui.msg;
+          const px = m.lines.length > 1 ? 24 : 24;
+          const py = m.lines.length > 1 ? 28 : 27;
+          if (m.pose === 'shake') drawPet(px + (Math.floor(now / 120) % 2 ? 1 : -1), py, { flip: Math.floor(now / 240) % 2 === 0 });
+          else if (m.pose === 'happy') { drawPet(px, py - (Math.floor(now / 200) % 2) * 2); if (blink) { draw(SP.heart, 8, 26); draw(SP.heart, 51, 30); } }
+          else if (m.pose === 'sad') drawPet(px, py, { sweat: true });
+          else drawPet(px, py + bob);
+          // text goes on top so tall hats never cover it
+          m.lines.forEach((l, i) => {
+            const y = 15 + i * 7;
+            ctx.fillStyle = LCD; ctx.fillRect(((W - textW(l)) >> 1) - 1, y - 1, textW(l) + 2, 7);
+            ctext(l, y, i === 0 && m.pose === 'happy' ? '#10286b' : INK);
+          });
+          drawHearts();
+          break;
+        }
+        case 'event': {
+          drawChrome(-1);
+          const ev = ui.event;
+          ev.title.forEach((l, i) => ctext(l, 15 + i * 6, '#10286b'));
+          text('A:' + ev.a, 3, 29);
+          text('B:' + ev.b, 3, 36);
+          if (blink) text('!', 58, 15, '#6e1616');
+          ctx.fillStyle = BAR; ctx.fillRect(0, 45, W, 11);
+          ctext('C: IGNORE', 48);
+          break;
+        }
+        default: {
+          drawChrome(ui.sel);
+          drawBackground(S.bg, now);
+          const x = ui.petX;
+          drawPet(x, 27 + (S.sick ? 0 : bob), { flip: ui.flip, sweat: S.sick || S.hunger === 0 });
+          if (S.sick && blink) draw(SP.skull, x < 30 ? x + 18 : x - 9, 18);
+          if (need && blink) text('!', 58, 15, '#6e1616');
+          if (ui.quote) {
+            const lines = ui.quote;
+            const bw = Math.max(...lines.map(textW)) + 4, bh = lines.length * 6 + 1;
+            const bx = Math.max(1, Math.min(W - bw - 1, x + 8 - (bw >> 1))), by = 26 - bh;
+            ctx.fillStyle = '#fffdf2'; ctx.fillRect(bx, by, bw, bh);
+            ctx.fillStyle = INK;
+            ctx.fillRect(bx, by - 1, bw, 1); ctx.fillRect(bx, by + bh, bw, 1);
+            ctx.fillRect(bx - 1, by, 1, bh); ctx.fillRect(bx + bw, by, 1, bh);
+            ctx.fillStyle = '#fffdf2'; ctx.fillRect(x + 7, by + bh, 2, 1);
+            lines.forEach((l, i) => text(l, bx + 2 + ((bw - 4 - textW(l)) >> 1), by + 1 + i * 6));
+          }
+          drawHearts();
+        }
+      }
+
+      if (need && !ui.needPrev) sfx.alert();
+      ui.needPrev = need;
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  const $ = id => document.getElementById(id);
+
+  // ---------- pixel-art shell ----------
+  function paintShell() {
+    const sc = document.getElementById('shell').getContext('2d');
+    const SW = 84, OY = 6;                 // egg starts 6 cells down, below the key loop
+    const C = { line: '#1d2f55', blue: '#3f86d6', rim: '#3474c0', red: '#d62839', white: '#f6f3ea', gold: '#f4c430', lcdLine: '#3a3f47' };
+    const put = (x, y, c) => { sc.fillStyle = c; sc.fillRect(x, y, 1, 1); };
+
+    // egg mask: slightly narrower at the top
+    const inEgg = (x, y) => {
+      if (y < 0 || y > 94) return false;
+      const t = (y + 0.5 - 47.5) / 47.5;
+      const hw = 40.5 * Math.sqrt(Math.max(0, 1 - t * t)) * (1 + 0.08 * t);
+      return Math.abs(x + 0.5 - SW / 2) <= hw;
+    };
+
+    // key loop
+    for (let y = 0; y < 8; y++) for (let x = 36; x < 48; x++) {
+      const d = Math.hypot(x + 0.5 - 42, y + 0.5 - 6);
+      if (d <= 5.5 && d >= 2.5) put(x, y, d > 4.6 || d < 3.4 ? C.line : C.blue);
+    }
+
+    for (let y = 0; y < 95; y++) for (let x = 0; x < SW; x++) {
+      if (!inEgg(x, y)) continue;
+      const edge = !inEgg(x - 1, y) || !inEgg(x + 1, y) || !inEgg(x, y - 1) || !inEgg(x, y + 1);
+      let c = C.blue;
+      if (!inEgg(x + 1, y + 1) || !inEgg(x, y + 2)) c = C.rim;
+      const wave = 72 + Math.round(2.5 * Math.sin(x / 9));
+      const k = y - wave;
+      if (k >= 0 && k < 9) c = k < 3 || k >= 6 ? C.red : C.white;
+      put(x, y + OY, edge ? C.line : c);
+    }
+
+    // stars
+    const BIG = ['..#..', '.###.', '#####', '.###.', '.#.#.'];
+    const SMALL = ['.#.', '###', '.#.'];
+    [[8, 30, SMALL, C.white], [73, 30, SMALL, C.white], [5, 42, SMALL, C.gold], [76, 42, SMALL, C.white],
+     [41, 2, SMALL, C.white], [6, 56, SMALL, C.white], [74, 52, BIG, C.gold]].forEach(([sx, sy, art, col]) => {
+      art.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') put(sx + i, sy + j + OY, col); }));
+    });
+
+    // screen bezel, outside in
+    const box = (x0, y0, x1, y1, c, cut) => {
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const dx = Math.min(x - x0, x1 - x), dy = Math.min(y - y0, y1 - y);
+        if (dx + dy < cut) continue;
+        put(x, y + OY, c);
+      }
+    };
+    box(12, 16, 71, 69, C.line, 2);
+    box(13, 17, 70, 68, C.red, 2);
+    box(14, 18, 69, 67, C.gold, 2);
+    box(15, 19, 68, 66, C.red, 1);
+    box(16, 20, 67, 65, C.lcdLine, 0);
+    box(17, 21, 66, 64, LCD, 0);
+  }
+
+  // pixel buttons: 10 x 11 cells, with a pressed variant that sits one cell lower
+  function buttonImage(down) {
+    const c = document.createElement('canvas');
+    c.width = 10; c.height = 11;
+    const g = c.getContext('2d');
+    const disc = (oy, fill, line) => {
+      for (let y = 0; y < 10; y++) for (let x = 0; x < 10; x++) {
+        const d = Math.hypot(x + 0.5 - 5, y + 0.5 - 5);
+        if (d > 5) continue;
+        g.fillStyle = d > 4 ? line : fill;
+        g.fillRect(x, y + oy, 1, 1);
+      }
+    };
+    if (!down) disc(1, '#b8860b', '#1d2f55');
+    disc(down ? 1 : 0, '#f4c430', '#1d2f55');
+    return c.toDataURL();
+  }
+  document.querySelectorAll('.btn').forEach(b => {
+    b.style.setProperty('--img', `url(${buttonImage(false)})`);
+    b.style.setProperty('--img-down', `url(${buttonImage(true)})`);
+  });
+  paintShell();
+
+  // art for the info panel, reusing the game's own sprites
+  function paintInto(canvas, sp, bg) {
+    canvas.width = sp.w + (bg ? 2 : 0); canvas.height = sp.h + (bg ? 2 : 0);
+    const g = canvas.getContext('2d');
+    const o = bg ? 1 : 0;
+    for (const [x, y, col] of sp.px) { g.fillStyle = col; g.fillRect(x + o, y + o, 1, 1); }
+  }
+  document.querySelectorAll('canvas[data-pet]').forEach(c => paintInto(c, PETS[c.dataset.pet].sprite));
+  document.querySelectorAll('canvas[data-icon]').forEach(c => paintInto(c, SP[c.dataset.icon], true));
+
+  // closet: hat and background pickers
+  function paintHatTile(c, it, unlocked) {
+    c.width = 20; c.height = 10;
+    if (!it.sp) return;
+    const g = c.getContext('2d');
+    const ox = (20 - it.sp.w) >> 1, oy = 10 - it.sp.h - 1;
+    for (const [x, y, col] of it.sp.px) { g.fillStyle = unlocked ? col : '#8d9297'; g.fillRect(ox + x, oy + y, 1, 1); }
+  }
+  function paintBgTile(c, id, unlocked) {
+    c.width = 64; c.height = 32;
+    const keep = ctx;
+    ctx = c.getContext('2d');
+    ctx.fillStyle = LCD; ctx.fillRect(0, 0, 64, 32);
+    ctx.save(); ctx.translate(0, -13); drawBackground(id, 700); ctx.restore();
+    if (!unlocked) { ctx.fillStyle = '#8d9297'; ctx.fillRect(0, 0, 64, 32); text('?', 30, 13, INK); }
+    ctx = keep;
+  }
+  function buildCloset() {
+    for (const [kind, items, el] of [['hat', HATS, $('hatTiles')], ['bg', BGS, $('bgTiles')]]) {
+      el.innerHTML = '';
+      for (const id in items) {
+        const it = items[id];
+        const unlocked = !it.test || S.unlocked.includes(kind + ':' + id);
+        const current = (kind === 'hat' ? S.hat : S.bg) === id;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'tile' + (current ? ' on' : '') + (unlocked ? '' : ' locked');
+        b.setAttribute('aria-pressed', current);
+        const c = document.createElement('canvas');
+        kind === 'hat' ? paintHatTile(c, it, unlocked) : paintBgTile(c, id, unlocked);
+        const lab = document.createElement('span');
+        lab.textContent = unlocked ? it.label : '???';
+        b.append(c, lab);
+        b.title = unlocked ? it.label : it.secret ? 'Secret' : 'Locked: ' + it.hint;
+        b.addEventListener('click', () => {
+          if (!unlocked) {
+            $('closetHint').textContent = it.secret ? "It's a secret... maybe try spoiling them." : 'Locked. To unlock: ' + it.hint.toLowerCase() + '.';
+            return;
+          }
+          if (kind === 'hat') S.hat = id; else S.bg = id;
+          $('closetHint').textContent = it.label + (kind === 'hat' ? ' is on.' : ' background is on.');
+          save(); buildCloset();
+        });
+        el.append(b);
+      }
+    }
+  }
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+    sfx.hatch();
+  }
+
+  // pixel night sky tile for the page background
+  (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const dots = [[5, 7], [21, 3], [40, 12], [58, 6], [12, 26], [33, 30], [52, 24], [3, 44], [26, 50], [46, 42], [60, 56], [15, 60]];
+    dots.forEach(([x, y], i) => {
+      g.fillStyle = i % 4 === 0 ? '#f4c430' : i % 3 === 0 ? '#8fa6de' : '#e8ecf8';
+      if (i % 5 === 0) { g.fillRect(x - 1, y, 3, 1); g.fillRect(x, y - 1, 1, 3); }
+      else g.fillRect(x, y, 1, 1);
+    });
+    document.body.style.setProperty('--stars', `url(${c.toDataURL()})`);
+  })();
+
+  // ---------- info panel ----------
+  function updateInfo() {
+    const pet = PETS[S.who];
+    if (S.phase === 'egg') { $('petName').textContent = 'AN EGG'; $('petAge').textContent = 'Not hatched'; $('petMood').textContent = 'Waiting to hatch...'; }
+    else {
+      $('petName').textContent = pet.name;
+      const yrs = Math.floor(S.age / T.YEAR);
+      $('petAge').textContent = yrs + (yrs === 1 ? ' year' : ' years') + ' (of 8)';
+      let mood;
+      if (S.phase === 'over') mood = S.end === 'win' ? 'Finished two terms!' : S.end === 'snack' ? 'Sugar crash!' : 'Voted out';
+      else if (S.sick) mood = 'Sick, needs medicine';
+      else if (S.hunger === 0) mood = 'Starving!';
+      else if (S.happy === 0) mood = 'Bored and grumpy';
+      else if (S.hunger + S.happy >= 7) mood = 'Doing great';
+      else mood = 'Doing okay';
+      $('petMood').textContent = mood;
+    }
+    $('petStage').textContent = S.phase === 'egg' ? 'Egg' : { baby: 'Baby', kid: 'Kid', adult: 'Adult' }[stageOf(S.age)];
+    $('rTrump').textContent = S.raised.trump || 0;
+    $('rBiden').textContent = S.raised.biden || 0;
+    $('rObama').textContent = S.raised.obama || 0;
+    $('muteBtn').textContent = 'SOUND: ' + (S.muted ? 'OFF' : 'ON');
+  }
+
+  $('muteBtn').addEventListener('click', () => { S.muted = !S.muted; save(); updateInfo(); });
+  $('resetBtn').addEventListener('click', () => {
+    if (S.phase === 'alive' && !confirm('Start over with a new egg? Your current president will be lost.')) return;
+    newEgg(); updateInfo();
+  });
+
+  // catch up on time spent away, then run
+  { const away = Date.now() - S.last; S.last = Date.now(); if (away > 0) catchUp(away); }
+  if (S.phase === 'egg' && S.who) S.eggT = T.EGG; // reload during hatch: replay it
+  checkUnlocks();
+  buildCloset();
+  updateInfo();
+  setInterval(() => { updateInfo(); save(); }, 1000);
+  addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
